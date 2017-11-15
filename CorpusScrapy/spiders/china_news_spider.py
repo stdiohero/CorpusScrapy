@@ -7,6 +7,7 @@ import datetime
 import logging
 import re
 from CorpusScrapy.items import NewsItem
+from scrapy.shell import inspect_response
 
 class ChinaNewsSpider(scrapy.Spider):
     name = 'chinanews'
@@ -19,7 +20,7 @@ class ChinaNewsSpider(scrapy.Spider):
         self.title = dict()
 
     def start_requests(self):
-        start_date = (2017, 11, 13)
+        start_date = (2017, 11, 15)
         for url in self.url_generator(start_date):
             yield scrapy.Request(url=url,
                                  callback=self.parse)
@@ -45,11 +46,14 @@ class ChinaNewsSpider(scrapy.Spider):
         for news_url, article_class in zip(link_list, class_list):
             url = response.urljoin(news_url)
             yield scrapy.Request(url=url,
-                                 callback=lambda: self.page_parse(response, article_class))
+                                 callback=self.page_parse, meta={'article_class': article_class})
+            #使用Request的meta来传递额外的参数
 
-
-    def page_parse(self, response, article_class):
+    def page_parse(self, response):
         content_query = '//p/text()'
+        article_class = response.meta['article_class']
+        article_class = re.sub(r'\s', '', article_class)
+
         if article_class not in self.title:
             if not article_class or len(article_class.strip()) <= 0:
                 article_class = '其他'
@@ -65,6 +69,8 @@ class ChinaNewsSpider(scrapy.Spider):
         item = NewsItem()
         item['title'] = title
         item['content'] = content
+        item['article_class'] = article_class
+
         yield item
 
 
